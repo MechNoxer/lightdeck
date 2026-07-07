@@ -41,6 +41,7 @@ class Light:
     color_temperature: int | None
     temperature_min: int | None
     temperature_max: int | None
+    color_mode: str | None
 
 
 class HueBridgeClient:
@@ -97,6 +98,7 @@ class HueBridgeClient:
                     color_temperature=state.get("ct"),
                     temperature_min=ct_capability.get("min") if isinstance(ct_capability, dict) else None,
                     temperature_max=ct_capability.get("max") if isinstance(ct_capability, dict) else None,
+                    color_mode=state.get("colormode"),
                 )
             )
 

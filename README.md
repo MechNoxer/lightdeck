@@ -72,14 +72,14 @@ The app stores the paired bridge details in:
 
 ## Arch / yay
 
-To make this installable with `yay`, publish the code to GitHub, create a `v0.1.2`
+To make this installable with `yay`, publish the code to GitHub, create a `v0.2.0`
 tag, then use the files in [`packaging/`](/home/mauricedelauw/Documents/Code projects/philps hue remote/packaging)
 for your AUR package repository.
 
 Typical flow:
 
 ```bash
-git tag v0.1.2
+git tag v0.2.0
 git push origin main --tags
 ```
 
