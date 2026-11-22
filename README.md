@@ -1,98 +1,91 @@
-# philips-hue-for-arch
+# Lightdeck
 
-Simple Linux desktop app for controlling Philips Hue lights with a clean GUI.
+A desktop remote for Hue lights on Linux, Windows and macOS.
 
-## Features
+- **Rooms and zones** with a room switch and brightness slider
+- **Scenes**: turn on the scenes from the Hue app, or create, edit and delete your own, with an optional live preview on the lights
+- **Color and white**: a hue/saturation color wheel, a Kelvin slider (warm → cool) and quick presets
+- **Live**: changes made in the Hue app or with a physical switch show up instantly (CLIP v2 event stream)
+- **Smooth controls**: sliders send updates while you drag, rate-limited to what the bridge can handle
+- Light and dark themes (follows your system by default)
+- A **demo mode** with simulated lights, so you can try it without a bridge
 
-- Discover your Hue bridge on the local network
-- Pair with the bridge from the desktop app
-- Turn lights on and off
-- Adjust brightness
-- Pick colors for color-capable lamps
-- Refresh lamp state from the bridge
+Requires a Hue Bridge v2 (the square one) with up-to-date firmware.
 
-## Run
+> Lightdeck is an independent project and is not affiliated with or endorsed by Signify or Philips. "Hue" is a trademark of Signify.
 
-For `bash`/`sh`:
+## Install
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-philips-hue-for-arch
-```
+Download the installer for your platform from the [Releases](https://github.com/MechNoxer/lightdeck/releases) page:
 
-For `fish`:
+| Platform | File |
+| --- | --- |
+| Windows 10/11 | `Lightdeck-<version>-windows-setup.exe` |
+| macOS (Apple Silicon) | `Lightdeck-<version>-macos-arm64.dmg` |
+| macOS (Intel) | `Lightdeck-<version>-macos-x64.dmg` |
+| Linux | `lightdeck-<version>-linux-x64.tar.gz`, or the AUR package below |
 
-```fish
-python3 -m venv .venv
-source .venv/bin/activate.fish
-python -m ensurepip --upgrade
-pip install -e .
-philips-hue-for-arch
-```
+The builds are not code-signed yet:
 
-Without activating the virtual environment:
+- **Windows**: SmartScreen may warn you. Click *More info → Run anyway*.
+- **macOS**: the first time, right-click the app and choose *Open*, or allow it under *System Settings → Privacy & Security*. When asked, allow access to the local network, because that's how the app reaches your bridge.
+
+### Arch Linux (AUR)
 
 ```bash
-python3 -m venv .venv
-./.venv/bin/python3 -m ensurepip --upgrade
-.venv/bin/pip install -e .
-.venv/bin/philips-hue-for-arch
+yay -S lightdeck
 ```
 
-If the environment gets into a broken state, rebuild it:
+The AUR files are in [`packaging/arch/`](packaging/arch).
 
-```fish
-rm -rf .venv
-python3 -m venv .venv
-source .venv/bin/activate.fish
-python -m ensurepip --upgrade
-python -m pip install -e .
-philips-hue-for-arch
-```
+## Getting started
 
-If you want it in your app launcher, copy [`philips-hue-for-arch.desktop`](/home/mauricedelauw/Documents/Code projects/philps hue remote/philips-hue-for-arch.desktop) to `~/.local/share/applications/`.
+1. Start Lightdeck. It searches your network for bridges.
+2. Pick your bridge, or type its IP address.
+3. Press the round link button on top of the bridge within 30 seconds.
 
-## Pairing
+Your pairing is stored in:
 
-1. Start the app.
-2. Open `Add Hub`.
-3. Click `Discover Bridge`.
-4. If more than one bridge is found, select the bridge you want to pair.
-5. Click `Pair Bridge`.
-6. Press the physical button on the selected Hue Bridge while the app is waiting.
-7. The app detects the button press automatically, pairs, and returns to the home page.
+| Platform | Location |
+| --- | --- |
+| Linux | `~/.config/lightdeck/config.json` |
+| macOS | `~/Library/Application Support/Lightdeck/config.json` |
+| Windows | `%APPDATA%\Lightdeck\config.json` |
 
-If you see `unauthorized user`, use `Forget Hub`, then go through the add-hub flow again. The Hue bridge username is a generated token, not your personal account name.
+If you used `philips-hue-for-arch` before, your existing pairing is picked up automatically.
 
-The app stores the paired bridge details in:
+On first connection, Lightdeck remembers the bridge's TLS certificate and from then on only talks to a bridge that presents that same certificate.
 
-`~/.config/philips-hue-for-arch/config.json`
-
-## Arch / yay
-
-To make this installable with `yay`, publish the code to GitHub, create a `v0.2.0`
-tag, then use the files in [`packaging/`](/home/mauricedelauw/Documents/Code projects/philps hue remote/packaging)
-for your AUR package repository.
-
-Typical flow:
+## Development
 
 ```bash
-git tag v0.2.0
-git push origin main --tags
+python -m venv .venv
+source .venv/bin/activate          # fish: source .venv/bin/activate.fish
+pip install -e ".[dev]"
+lightdeck --demo                   # run with simulated lights
+pytest                             # headless UI + client tests
 ```
 
-Then create a separate AUR repo named `philips-hue-for-arch`, copy in:
+Project layout:
 
-- `packaging/PKGBUILD`
-- `packaging/.SRCINFO`
+```
+src/lightdeck/
+  hue/        bridge client, live store, command queue, demo bridge
+  ui/         widgets, pages, scene editor, setup flow, theme
+  colors.py   CIE xy / gamut / color temperature math
+packaging/    PyInstaller spec, Inno Setup script, AUR PKGBUILD, icons
+```
 
-Users can then install it with:
+### Releasing
+
+Push a tag such as `v0.3.0`. GitHub Actions runs the tests, builds the Windows installer, the macOS disk images and a Linux tarball, and attaches them to a GitHub release.
+
+To build locally:
 
 ```bash
-yay -S philips-hue-for-arch
+pip install . pyinstaller
+pyinstaller packaging/pyinstaller/lightdeck.spec
+# Windows: iscc /DAppVersion=0.3.0 packaging\windows\lightdeck.iss
 ```
 
-If you change the GitHub repo name, update the URL in `packaging/PKGBUILD` and regenerate
-`packaging/.SRCINFO`.
+Icons are generated with `python scripts/make_icons.py`.

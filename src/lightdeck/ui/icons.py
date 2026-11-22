@@ -7,7 +7,7 @@ placeholder so no binary assets are needed and icons can be tinted on demand.
 from __future__ import annotations
 
 from PySide6.QtCore import QByteArray, Qt
-from PySide6.QtGui import QIcon, QPainter, QPixmap
+from PySide6.QtGui import QGuiApplication, QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
 _STROKE = 'fill="none" stroke="{c}" stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"'
@@ -97,27 +97,103 @@ _TEMPLATES: dict[str, str] = {
             <polyline points="5 13 10 18 19 7"/>
         </svg>
     """,
+    "home": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <path d="M3 10.5 12 3l9 7.5"/>
+            <path d="M5 9v11h14V9"/>
+            <path d="M10 20v-6h4v6"/>
+        </svg>
+    """,
+    "settings": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+        </svg>
+    """,
+    "close": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+            <line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+    """,
+    "more": """
+        <svg viewBox="0 0 24 24" fill="{c}">
+            <circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/>
+        </svg>
+    """,
+    "edit": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/>
+            <line x1="13.5" y1="6.5" x2="17.5" y2="10.5"/>
+        </svg>
+    """,
+    "trash": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <polyline points="4 7 20 7"/>
+            <path d="M6 7l1 13h10l1-13"/>
+            <path d="M9 7V4h6v3"/>
+        </svg>
+    """,
+    "room": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/>
+            <line x1="3" y1="21" x2="21" y2="21"/>
+            <line x1="14.5" y1="12" x2="14.5" y2="12.5"/>
+        </svg>
+    """,
+    "zone": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <polygon points="12 3 21 8 12 13 3 8 12 3"/>
+            <polyline points="3 13 12 18 21 13"/>
+        </svg>
+    """,
+    "sparkles": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=1.8)}>
+            <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>
+            <path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/>
+        </svg>
+    """,
+    "wifi-off": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <line x1="3" y1="3" x2="21" y2="21"/>
+            <path d="M8.5 16.5a5 5 0 0 1 7 0"/>
+            <path d="M5 13a10 10 0 0 1 5.5-2.8M19 13a10 10 0 0 0-2.4-1.7"/>
+            <line x1="12" y1="20" x2="12.01" y2="20"/>
+        </svg>
+    """,
+    "moon": f"""
+        <svg viewBox="0 0 24 24" {_STROKE.format(c="{c}", w=2)}>
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+    """,
 }
 
-_cache: dict[tuple[str, str, int], QIcon] = {}
+_cache: dict[tuple[str, str, int, float], QIcon] = {}
 
 
-def icon(name: str, color: str = "#f2f0ec", size: int = 20) -> QIcon:
-    key = (name, color, size)
-    cached = _cache.get(key)
-    if cached is not None:
-        return cached
+def _device_pixel_ratio() -> float:
+    app = QGuiApplication.instance()
+    screen = app.primaryScreen() if app else None
+    return max(1.0, screen.devicePixelRatio()) if screen else 1.0
 
+
+def pixmap(name: str, color: str, size: int = 20) -> QPixmap:
+    dpr = _device_pixel_ratio()
     svg = _TEMPLATES[name].replace("{c}", color)
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
-
-    pixmap = QPixmap(size, size)
-    pixmap.fill(Qt.transparent)
-    painter = QPainter(pixmap)
+    result = QPixmap(round(size * dpr), round(size * dpr))
+    result.fill(Qt.transparent)
+    painter = QPainter(result)
     painter.setRenderHint(QPainter.Antialiasing)
     renderer.render(painter)
     painter.end()
-
-    result = QIcon(pixmap)
-    _cache[key] = result
+    result.setDevicePixelRatio(dpr)
     return result
+
+
+def icon(name: str, color: str = "#f2f0ec", size: int = 20) -> QIcon:
+    key = (name, color, size, _device_pixel_ratio())
+    cached = _cache.get(key)
+    if cached is None:
+        cached = _cache[key] = QIcon(pixmap(name, color, size))
+    return cached

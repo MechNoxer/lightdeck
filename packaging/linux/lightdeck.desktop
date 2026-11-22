@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Lightdeck
+GenericName=Light Remote
+Comment=Control your Hue lights, rooms and scenes
+Exec=lightdeck
+Icon=lightdeck
+Terminal=false
+Categories=Utility;
+Keywords=hue;lights;smart home;scenes;
+StartupWMClass=lightdeck

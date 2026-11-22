@@ -2,7 +2,7 @@
 set -eu
 
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-cd "$PROJECT_DIR/packaging"
+cd "$PROJECT_DIR/packaging/arch"
 
 if ! command -v makepkg >/dev/null 2>&1; then
   echo "makepkg is required to regenerate .SRCINFO" >&2

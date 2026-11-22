@@ -11,3 +11,5 @@ dist/
 *.pkg.tar.*
 *.tar.gz
 .DS_Store
+*.dmg
+*.exe
