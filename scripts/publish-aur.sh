@@ -34,8 +34,8 @@ cd "$WORK/aur"
 makepkg --printsrcinfo > .SRCINFO
 cp .SRCINFO "$ROOT/packaging/arch/.SRCINFO"
 
-echo "Test build:"
-makepkg -f --cleanbuild
+echo "Test build (installs missing dependencies with pacman):"
+makepkg -f --cleanbuild --syncdeps
 
 git add PKGBUILD .SRCINFO
 git commit -m "Update to $VERSION"
