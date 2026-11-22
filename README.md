@@ -2,6 +2,12 @@
 
 A desktop remote for Hue lights on Linux, Windows and macOS.
 
+> [!WARNING]
+> **Coming from `philips-hue-for-arch`?** The project has been renamed to **Lightdeck**, and the
+> old AUR package won't be updated anymore. Uninstall it and install `lightdeck` instead.
+> See [Switching from philips-hue-for-arch](#switching-from-philips-hue-for-arch). Your bridge
+> pairing carries over, so you don't need to pair again.
+
 - **Rooms and zones** with a room switch and brightness slider
 - **Scenes**: turn on the scenes from the Hue app, or create, edit and delete your own, with an optional live preview on the lights
 - **Color and white**: a hue/saturation color wheel, a Kelvin slider (warm → cool) and quick presets
@@ -37,6 +43,18 @@ yay -S lightdeck
 ```
 
 The AUR files are in [`packaging/arch/`](packaging/arch).
+
+### Switching from philips-hue-for-arch
+
+`philips-hue-for-arch` is the old name of this app and no longer gets updates. Remove it and install `lightdeck`:
+
+```bash
+yay -Rns philips-hue-for-arch
+yay -S lightdeck
+```
+
+Then start **Lightdeck** from your app launcher, or run `lightdeck` in a terminal. The old `philips-hue-for-arch` command and launcher entry are removed.
+Lightdeck reads your existing pairing from `~/.config/philips-hue-for-arch/config.json` the first time it starts, so you don't need to press the bridge button again.
 
 ## Getting started
 
