@@ -103,7 +103,21 @@ class EventStream(QThread):
     def stop(self) -> None:
         self._stop.set()
         self._client.abort_events()
-        self.wait(3000)
+        if not self.wait(1500):
+            # Still busy (e.g. mid-connect). Destroying a running QThread aborts
+            # the process, so detach it and let it finish on its own.
+            self.setParent(None)
+            _lingering_threads.append(self)
+
+
+_lingering_threads: list[EventStream] = []
+
+
+def wait_for_background_threads(timeout_ms: int = 8000) -> None:
+    """Call before exiting so no QThread is destroyed while still running."""
+    for thread in _lingering_threads:
+        thread.wait(timeout_ms)
+    _lingering_threads.clear()
 
 
 class HueController(QObject):

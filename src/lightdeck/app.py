@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 import sys
 
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
 
 from . import APP_ID, APP_NAME, __version__
 from .config import load_config
+from .hue.controller import wait_for_background_threads
 from .ui.main_window import MainWindow, app_icon
 from .ui.theme import ThemeManager
 
@@ -31,7 +33,14 @@ def main(argv: list[str] | None = None) -> int:
 
     window = MainWindow(config, themes, demo=args.demo)
     window.show()
-    return app.exec()
+    code = app.exec()
+
+    # Let background work finish before Python starts tearing objects down;
+    # a QThread or pool task outliving its Qt objects aborts the process.
+    window.shutdown()
+    wait_for_background_threads()
+    QThreadPool.globalInstance().waitForDone(8000)
+    return code
 
 
 if __name__ == "__main__":

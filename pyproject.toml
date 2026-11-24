@@ -8,6 +8,7 @@ license = {text = "MIT"}
 dependencies = [
   "PySide6-Essentials>=6.8",
   "requests>=2.32",
+  "urllib3>=2",
   "zeroconf>=0.132",
 ]
 

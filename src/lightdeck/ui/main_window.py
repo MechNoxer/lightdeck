@@ -151,6 +151,10 @@ class MainWindow(QMainWindow):
         self.navigate("home")
         controller.start()
 
+    def shutdown(self) -> None:
+        """Stop all bridge activity. Safe to call more than once."""
+        self._stop()
+
     def _stop(self) -> None:
         if self.controller is not None:
             self.controller.stop()

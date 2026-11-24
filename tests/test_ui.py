@@ -148,3 +148,18 @@ def test_theme_switch_and_exit_demo(window, monkeypatch):
     window.forget_bridge()
     assert window.root.currentIndex() == window.SETUP
     assert window.controller is None
+
+
+def test_closing_during_discovery_is_clean(qapp, tmp_path, monkeypatch):
+    """Closing on the setup page while a network search is running must not crash."""
+    from PySide6.QtCore import QThreadPool
+
+    monkeypatch.setenv("LIGHTDECK_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr("lightdeck.ui.setup_page.discover_bridges", lambda: time.sleep(0.5) or [])
+    themes = ThemeManager(qapp, "dark")
+    win = MainWindow(AppConfig(), themes)
+    win.show()
+    QTest.qWait(50)
+    win.close()
+    win.shutdown()
+    assert QThreadPool.globalInstance().waitForDone(3000)

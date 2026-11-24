@@ -7,6 +7,7 @@ import shutil
 import ssl
 import subprocess
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -25,6 +26,8 @@ LIGHT = {"id": "l1", "type": "light", "on": {"on": True}, "dimming": {"brightnes
 
 class Handler(BaseHTTPRequestHandler):
     puts: list = []
+    stream_hold = 0.5  # seconds the event stream stays open after the first event
+    chunked = False  # HTTP/1.1 chunked transfer encoding, like a real bridge
 
     def log_message(self, *args):  # silence
         pass
@@ -45,14 +48,22 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/clip/v2/resource":
             return self._json(200, {"errors": [], "data": [LIGHT]})
         if self.path == "/eventstream/clip/v2":
+            chunked = Handler.chunked
+            if chunked:
+                self.protocol_version = "HTTP/1.1"
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
+            if chunked:
+                self.send_header("Transfer-Encoding", "chunked")
             self.end_headers()
             event = [{"type": "update", "data": [{"id": "l1", "dimming": {"brightness": 12.0}}]}]
-            self.wfile.write(b": hi\n\n")
-            self.wfile.write(b"id: 1:0\ndata: " + json.dumps(event).encode() + b"\n\n")
+            for part in (b": hi\n\n", b"id: 1:0\ndata: " + json.dumps(event).encode() + b"\n\n"):
+                self.wfile.write(b"%x\r\n%s\r\n" % (len(part), part) if chunked else part)
             self.wfile.flush()
-            threading.Event().wait(0.5)
+            threading.Event().wait(Handler.stream_hold)
+            if chunked:
+                self.wfile.write(b"0\r\n\r\n")
+            self.close_connection = True
             return None
         return self._json(404, {"errors": [{"description": "not found"}]})
 
@@ -70,6 +81,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 class QuietServer(ThreadingHTTPServer):
+    daemon_threads = True
+    block_on_close = False
+
     def handle_error(self, request, client_address):  # aborted handshakes are expected
         pass
 
@@ -127,3 +141,37 @@ def test_bad_key_is_unauthorized(bridge):
     client = HueClient(host, "wrong", fetch_fingerprint("127.0.0.1", port))
     with pytest.raises(HueUnauthorizedError):
         client.get_all()
+
+
+@pytest.mark.parametrize("chunked", [False, True], ids=["plain", "chunked"])
+def test_live_events_and_abort(bridge, chunked):
+    """Events arrive while the stream stays open, and closing the app never hangs on it."""
+    host, port = bridge
+    Handler.stream_hold, Handler.chunked = 30, chunked
+    try:
+        client = HueClient(host, KEY, fetch_fingerprint("127.0.0.1", port))
+        stop = threading.Event()
+        events = client.iter_events(stop)
+        assert next(events) == []
+        started = time.monotonic()
+        batch = next(events)  # must arrive now, not when the server hangs up 30 s later
+        assert time.monotonic() - started < 2
+        assert batch[0]["data"][0]["dimming"]["brightness"] == 12.0
+
+        finished = threading.Event()
+
+        def drain():
+            for _ in events:
+                pass
+            finished.set()
+
+        reader = threading.Thread(target=drain, daemon=True)
+        reader.start()
+        time.sleep(0.2)
+        started = time.monotonic()
+        stop.set()
+        client.abort_events()
+        assert finished.wait(2), "reader still blocked after abort_events()"
+        assert time.monotonic() - started < 1.0
+    finally:
+        Handler.stream_hold, Handler.chunked = 0.5, False

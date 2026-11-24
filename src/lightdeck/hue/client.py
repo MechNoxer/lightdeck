@@ -7,6 +7,7 @@ bridge presenting that exact certificate (trust on first use).
 
 from __future__ import annotations
 
+import codecs
 import hashlib
 import json
 import socket
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Iterator
 
 import requests
+import urllib3
 from requests.adapters import HTTPAdapter
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.poolmanager import PoolManager
@@ -175,6 +177,38 @@ def _error_text(payload: Any) -> str | None:
     return None
 
 
+def _live_chunks(response: requests.Response) -> Iterator[bytes]:
+    """Yield data as soon as it arrives.
+
+    ``iter_content(chunk_size=None)`` waits for the connection to close when
+    the stream isn't chunk-encoded, which would hold back every event.
+    """
+    read1 = getattr(response.raw, "read1", None)
+    if read1 is None:  # urllib3 < 2
+        yield from response.iter_content(chunk_size=1)
+        return
+    while True:
+        data = read1(65536)
+        if not data:
+            return
+        yield data
+
+
+def _response_socket(response: requests.Response) -> socket.socket | None:
+    """The OS socket under a streamed response (urllib3 internals, best effort)."""
+    raw = response.raw
+    candidates = [
+        getattr(getattr(raw, "_connection", None), "sock", None),
+        # http.client drops connection.sock for streamed responses; the socket
+        # then lives only inside the response's buffered reader.
+        getattr(getattr(getattr(getattr(raw, "_fp", None), "fp", None), "raw", None), "_sock", None),
+    ]
+    for sock in candidates:
+        if isinstance(sock, socket.socket):
+            return sock
+    return None
+
+
 class HueClient:
     """Thread-safe: each thread gets its own requests session."""
 
@@ -183,7 +217,7 @@ class HueClient:
         self.app_key = app_key
         self.fingerprint = fingerprint
         self._local = threading.local()
-        self._event_response: requests.Response | None = None
+        self._event_socket: socket.socket | None = None
 
     # -- pairing -----------------------------------------------------------
 
@@ -245,15 +279,18 @@ class HueClient:
         if response.status_code != 200:
             raise HueError(f"Event stream failed with HTTP {response.status_code}.")
 
-        self._event_response = response
-        yield []
+        self._event_socket = _response_socket(response)
         buffer = ""
         data_lines: list[str] = []
         try:
-            for chunk in response.iter_content(chunk_size=None, decode_unicode=False):
+            if stop.is_set():
+                return
+            yield []
+            decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+            for chunk in _live_chunks(response):
                 if stop.is_set():
                     return
-                buffer += chunk.decode("utf-8", errors="replace")
+                buffer += decoder.decode(chunk)
                 while "\n" in buffer:
                     line, buffer = buffer.split("\n", 1)
                     line = line.rstrip("\r")
@@ -267,19 +304,28 @@ class HueClient:
                         data_lines = []
                         if isinstance(batch, list) and batch:
                             yield batch
-        except (requests.RequestException, OSError, AttributeError) as exc:
+        except (requests.RequestException, urllib3.exceptions.HTTPError, OSError, ValueError, AttributeError) as exc:
             if not stop.is_set():
                 raise HueError("Lost connection to the bridge.") from exc
         finally:
-            self._event_response = None
-            response.close()
-
-    def abort_events(self) -> None:
-        response = self._event_response
-        if response is not None:
+            self._event_socket = None
             try:
                 response.close()
             except Exception:  # noqa: BLE001
+                pass
+
+    def abort_events(self) -> None:
+        """Unblock a reader stuck in iter_events. Safe to call from any thread.
+
+        Closing the response from another thread deadlocks against the thread
+        that is reading it, so instead shut the raw socket down: the blocked
+        read returns immediately and the reading thread cleans up itself.
+        """
+        sock = self._event_socket
+        if sock is not None:
+            try:
+                socket.socket.shutdown(sock, socket.SHUT_RDWR)
+            except OSError:
                 pass
 
     # -- internals ---------------------------------------------------------
