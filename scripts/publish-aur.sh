@@ -34,6 +34,12 @@ cd "$WORK/aur"
 makepkg --printsrcinfo > .SRCINFO
 cp .SRCINFO "$ROOT/packaging/arch/.SRCINFO"
 
+if [ -z "$(git status --porcelain -- PKGBUILD .SRCINFO)" ]; then
+  echo "The AUR already has lightdeck $VERSION with this PKGBUILD; nothing to publish."
+  echo "Bump the version (or pkgrel in packaging/arch/PKGBUILD) to publish an update."
+  exit 0
+fi
+
 echo "Test build (installs missing dependencies with pacman):"
 makepkg -f --cleanbuild --syncdeps
 

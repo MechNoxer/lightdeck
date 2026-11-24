@@ -1,5 +1,5 @@
 pkgname=lightdeck
-pkgver=0.3.0
+pkgver=0.3.1
 pkgrel=1
 pkgdesc="Desktop remote for Hue lights: rooms, scenes and colors"
 arch=("any")
